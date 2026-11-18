@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>網頁版線性規劃計算器 | Web-based Linear Programming Calculator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="./src/styles/base.css">
+    <link rel="stylesheet" href="./src/styles/layout.css">
+    <link rel="stylesheet" href="./src/styles/components.css">
+    <script type="module" src="./src/main.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        slate: {
+                            850: '#131c2e',
+                            900: '#0f172a',
+                            950: '#080d1a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col selection:bg-cyan-500/30 selection:text-cyan-200">
+
+    <!-- 頂部導覽列 -->
+    <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                    <i class="fa-solid fa-chart-line text-white text-lg"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-lg sm:text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-100 to-cyan-300 bg-clip-text text-transparent">
+                            網頁版線性規劃計算器
+                        </h1>
+                        <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+                            純前端引擎 v2.4
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-400">Management Mathematics — Linear Programming & Decision Support System</p>
+                </div>
+            </div>
+
+            <!-- 主模式切換頁籤 -->
+            <nav class="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800/80">
+                <button onclick="showOnboardingPage()" id="nav-btn-home" class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-2 bg-cyan-600 text-white">
+                    <i class="fa-solid fa-compass"></i>
+                    <span>問題分類</span>
+                </button>
+                <div class="nav-menu-wrap">
+                    <button onclick="toggleAdvancedTools()" id="nav-btn-tools" class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-2 text-slate-300 hover:text-white">
+                        <i class="fa-solid fa-toolbox"></i>
+                        <span>進階工具</span>
+                        <i class="fa-solid fa-chevron-down text-[10px]"></i>
+                    </button>
+                    <div id="advanced-tools-menu" class="nav-menu hidden">
+                        <button onclick="switchMainTab('general')" class="flex items-center gap-2 text-slate-300">
+                            <i class="fa-solid fa-sliders text-cyan-300"></i>
+                            <span>自訂最佳化模型</span>
+                        </button>
+                        <button onclick="switchMainTab('transport')" class="flex items-center gap-2 text-slate-300">
+                            <i class="fa-solid fa-truck-fast text-cyan-300"></i>
+                            <span>運輸與配送模型</span>
+                        </button>
+                        <button onclick="switchMainTab('templates')" class="flex items-center gap-2 text-slate-300">
+                            <i class="fa-solid fa-wand-magic-sparkles text-cyan-300"></i>
+                            <span>範本與 AI 建模</span>
+                        </button>
+                    </div>
+                </div>
+
+            </nav>
+        </div>
+    </header>
+
+    <!-- 通知訊息框 (取代 alert) -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+
+    <div id="workspace-shell" class="workspace-shell sidebar-hidden">
+        <aside class="workspace-sidebar" aria-label="問題分析導覽">
+            <div class="workspace-sidebar-inner">
+                <div class="sidebar-label">問題工作區</div>
+                <button class="sidebar-link active" data-sidebar-target="input" onclick="navigateSidebar('input')"><i class="fa-solid fa-pen-to-square"></i><span>一般資料填入</span></button>
+                <div class="sidebar-divider"></div>
+                <div class="sidebar-label">詳細檢視</div>
+                <button class="sidebar-link" data-sidebar-target="formula" onclick="navigateSidebar('formula')"><i class="fa-solid fa-square-root-variable"></i><span>數學公式與模型</span></button>
+                <button class="sidebar-link" data-sidebar-target="analysis" onclick="navigateSidebar('analysis')"><i class="fa-solid fa-chart-line"></i><span>結果與進一步分析</span></button>
+                <button class="sidebar-link" data-sidebar-target="graph" onclick="navigateSidebar('graph')"><i class="fa-solid fa-chart-area"></i><span>圖表與敏感度</span></button>
+            </div>
+        </aside>
+        <div class="workspace-main">
+
+    <!-- 主內容區 -->
+    <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- Beginner-friendly entry point -->
+        <div id="view-onboarding" class="space-y-6">
+            <section class="text-center pt-4 pb-2">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs text-cyan-300 bg-cyan-500/10 border border-cyan-500/25 mb-4">
+                    <i class="fa-solid fa-compass"></i>
+                    不需要先學會線性規劃
+                </div>
+                <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">先告訴我，你想解決哪一種問題？</h2>
+                <p class="max-w-2xl mx-auto mt-3 text-sm sm:text-base text-slate-400 leading-relaxed">
+                    用生活中的語言描述情境，系統會幫你整理成可計算的模型。你不需要先知道變數、目標函數或限制式。
+                </p>
+            </section>
+
+            <section id="guided-picker" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <button class="guided-option rounded-xl p-4" onclick="startGuidedScenario('allocation')">
+                    <span class="guided-icon w-10 h-10 rounded-lg flex items-center justify-center mb-4"><i class="fa-solid fa-boxes-stacked"></i></span>
+                    <span class="block text-sm font-semibold text-white">分配有限資源</span>
+                    <span class="block mt-2 text-xs text-slate-400 leading-relaxed">例如：原料和工時有限，要生產哪些產品才能賺最多？</span>
+                </button>
+                <button class="guided-option rounded-xl p-4" onclick="startGuidedScenario('cost')">
+                    <span class="guided-icon w-10 h-10 rounded-lg flex items-center justify-center mb-4"><i class="fa-solid fa-coins"></i></span>
+                    <span class="block text-sm font-semibold text-white">用最低成本達成需求</span>
+                    <span class="block mt-2 text-xs text-slate-400 leading-relaxed">例如：要達到營養或產量要求，怎麼組合才最省錢？</span>
+                </button>
+                <button class="guided-option rounded-xl p-4" onclick="startGuidedScenario('transport')">
+                    <span class="guided-icon w-10 h-10 rounded-lg flex items-center justify-center mb-4"><i class="fa-solid fa-truck-fast"></i></span>
+                    <span class="block text-sm font-semibold text-white">安排運送與配送</span>
+                    <span class="block mt-2 text-xs text-slate-400 leading-relaxed">例如：多個倉庫供貨給多個門市，怎麼運送最省成本？</span>
+                </button>
+                <button class="guided-option rounded-xl p-4" onclick="startGuidedScenario('assignment')">
+                    <span class="guided-icon w-10 h-10 rounded-lg flex items-center justify-center mb-4"><i class="fa-solid fa-people-arrows"></i></span>
+                    <span class="block text-sm font-semibold text-white">安排人員或工作</span>
+                    <span class="block mt-2 text-xs text-slate-400 leading-relaxed">例如：把員工分配到工作，讓總成本或時間最少。</span>
+                </button>
+                <button class="guided-option rounded-xl p-4" onclick="startGuidedScenario('blending')">
+                    <span class="guided-icon w-10 h-10 rounded-lg flex items-center justify-center mb-4"><i class="fa-solid fa-flask"></i></span>
+                    <span class="block text-sm font-semibold text-white">混合原料或配方</span>
+                    <span class="block mt-2 text-xs text-slate-400 leading-relaxed">例如：不同原料的價格和成分不同，要怎麼調配？</span>
+                </button>
+                <button class="guided-option rounded-xl p-4" onclick="switchMainTab('templates')">
+                    <span class="guided-icon w-10 h-10 rounded-lg flex items-center justify-center mb-4"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
+                    <span class="block text-sm font-semibold text-white">AI 建模</span>
+                    <span class="block mt-2 text-xs text-slate-400 leading-relaxed">用自然語言描述問題，讓 AI 協助建立線性規劃模型。</span>
+                </button>
+            </section>
+
+            <section id="guided-details" class="hidden guided-step glass-card rounded-xl p-5 sm:p-6">
+                <div id="current-model-banner" class="current-model-banner" role="status" aria-live="polite">
+                    <span class="current-model-banner-label"><i class="fa-solid fa-cube mr-1.5"></i>目前使用的模型</span>
+                    <span id="current-model-value" class="current-model-banner-value">尚未選擇</span>
+                </div>
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <p id="guided-kicker" class="text-xs font-semibold text-cyan-300 uppercase tracking-wider">問題類型</p>
+                        <h3 id="guided-title" class="mt-1 text-xl font-semibold text-white"></h3>
+                        <p id="guided-description" class="mt-2 text-sm text-slate-400"></p>
+                    </div>
+                    <button class="text-xs text-slate-400 hover:text-white" onclick="resetGuidedPicker()">重新選擇</button>
+                </div>
+
+                <div class="guided-example rounded-lg p-4 mt-5">
+                    <p class="text-xs font-medium text-slate-400">你會先回答這些問題</p>
+                    <div id="guided-questions" class="grid sm:grid-cols-3 gap-3 mt-3 text-sm text-slate-200"></div>
+                </div>
+
+                <div id="guided-form" class="mt-5"></div>
+
+                <div id="guided-result" class="hidden mt-5 p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/25">
+                    <p class="text-xs font-semibold text-emerald-300">先看懂結果</p>
+                    <h4 id="guided-result-title" class="mt-1 text-lg font-semibold text-white"></h4>
+                    <p id="guided-result-summary" class="mt-2 text-sm text-slate-300 leading-relaxed"></p>
+                    <div id="guided-result-values" class="grid sm:grid-cols-3 gap-2 mt-4"></div>
+                    <div class="flex flex-wrap gap-3 mt-4">
+                        <button class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-200" onclick="openGuidedEditor()">用自己的資料試試看</button>
+                        <button class="px-4 py-2 rounded-lg text-xs text-slate-400 hover:text-white" onclick="resetGuidedPicker()">回到問題分類</button>
+                    </div>
+                </div>
+
+                <div id="guided-unknown" class="hidden mt-4 p-4 rounded-lg bg-amber-500/10 border border-amber-500/25 text-sm text-amber-100 leading-relaxed">
+                    如果你的問題可以說成「調整一些數量，讓結果最好，同時不能違反一些條件」，通常就適合用這個工具。先從一個範例開始，也可以再回來輸入自己的資料。
+                </div>
+
+                <div class="flex flex-wrap gap-3 mt-5">
+                    <button id="guided-example-button" class="px-4 py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-sm font-semibold text-white" onclick="useGuidedExample()">
+                        <i class="fa-solid fa-play mr-1.5"></i>用範例開始
+                    </button>
+                    <button class="px-4 py-2.5 rounded-lg border border-slate-700 text-sm text-slate-300 hover:bg-slate-800" onclick="openGuidedEditor()">
+                        我想自己輸入資料
+                    </button>
+                </div>
+            </section>
+
+            <div class="text-center pt-1">
+                <button class="text-xs text-slate-500 hover:text-cyan-300" onclick="openGuidedEditor()">熟悉線性規劃？直接進入進階編輯器 →</button>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             TAB 1: 一般線性規劃 (General LP Mode)
+             ========================================== -->
+        <div id="view-general" class="space-y-6">
+
+            <!-- 模型建立與即時預覽雙欄架構 -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                <!-- 左欄：參數設定與輸入 (7 cols) -->
+                <div class="lg:col-span-7 space-y-6">
+
+                    <!-- 1 & 2. 問題類型與決策變數設定 -->
+                    <section id="input-section" class="glass-card rounded-2xl p-5 space-y-5">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                            <div class="flex items-center gap-2.5">
+                                <span class="w-6 h-6 rounded-lg bg-cyan-500/20 text-cyan-400 font-mono text-xs font-bold flex items-center justify-center border border-cyan-500/30">1</span>
+                                <h2 class="text-base font-semibold text-white">問題類型與決策變數設定</h2>
+                            </div>
+                            <button onclick="resetLPForm()" class="text-xs text-slate-400 hover:text-rose-400 transition flex items-center gap-1">
+                                <i class="fa-solid fa-rotate-left"></i> 清空重設
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <!-- 問題類型 Max / Min -->
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-2">目標問題類型 (Objective Type)</label>
+                                <div class="grid grid-cols-2 gap-2 p-1 bg-slate-950 rounded-xl border border-slate-800">
+                                    <button type="button" id="btn-type-max" onclick="setProblemType('max')" class="py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5 bg-cyan-600 text-white shadow">
+                                        <i class="fa-solid fa-arrow-trend-up"></i> 最大化 (Max)
+                                    </button>
+                                    <button type="button" id="btn-type-min" onclick="setProblemType('min')" class="py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5 text-slate-400 hover:text-white">
+                                        <i class="fa-solid fa-arrow-trend-down"></i> 最小化 (Min)
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- 決策變數個數設定 -->
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-2">決策變數數量 (Decision Variables: 2 ~ 12)</label>
+                                <div class="flex items-center gap-2">
+                                    <button type="button" onclick="changeVarCount(-1)" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 flex items-center justify-center transition">
+                                        <i class="fa-solid fa-minus"></i>
+                                    </button>
+                                    <input type="number" id="input-var-count" min="1" max="16" value="2" onchange="setVarCount(this.value)"
+                                        class="w-full h-10 bg-slate-950 border border-slate-800 rounded-xl text-center font-mono font-bold text-base text-cyan-400 focus:outline-none focus:border-cyan-500">
+                                    <button type="button" onclick="changeVarCount(1)" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 flex items-center justify-center transition">
+                                        <i class="fa-solid fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 決策變數名稱與型態設定 (非負限制 / 自由變數 / 整數 / 0-1) -->
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="text-xs font-medium text-slate-400">各決策變數名稱、管理意義與定義域限制 (功能需求 2 & 5)</label>
+                                <span class="text-[11px] text-slate-500">可切換非負實數、無限制(取消非負)、整數或 0-1 變數</span>
+                            </div>
+                            <div id="var-settings-container" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                <!-- 由 JS 動態渲染 -->
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 3. 目標函數輸入 -->
+                    <section id="objective-section" class="glass-card rounded-2xl p-5 space-y-4">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                            <div class="flex items-center gap-2.5">
+                                <span class="w-6 h-6 rounded-lg bg-cyan-500/20 text-cyan-400 font-mono text-xs font-bold flex items-center justify-center border border-cyan-500/30">2</span>
+                                <h2 class="text-base font-semibold text-white">目標函數輸入 (Objective Function)</h2>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-slate-400">目標單位：</span>
+                                <input type="text" id="obj-unit-input" value="元 (利潤)" oninput="updateModelState()"
+                                    class="w-28 px-2.5 py-1 text-xs bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-cyan-500">
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-2 bg-slate-950/80 p-3.5 rounded-xl border border-slate-800/80">
+                            <span id="obj-prefix-badge" class="px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 font-mono font-bold text-sm border border-cyan-500/30">
+                                max Z =
+                            </span>
+                            <div id="obj-coeffs-container" class="flex flex-wrap items-center gap-2 flex-1">
+                                <!-- 由 JS 動態渲染 -->
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 4. 限制式輸入 -->
+                    <section id="constraints-section" class="glass-card rounded-2xl p-5 space-y-4">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                            <div class="flex items-center gap-2.5">
+                                <span class="w-6 h-6 rounded-lg bg-cyan-500/20 text-cyan-400 font-mono text-xs font-bold flex items-center justify-center border border-cyan-500/30">3</span>
+                                <h2 class="text-base font-semibold text-white">限制式設定 (Constraints)</h2>
+                            </div>
+                            <button type="button" onclick="addConstraint()" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-cyan-600 hover:bg-cyan-500 text-white shadow transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-plus"></i> 新增限制式
+                            </button>
+                        </div>
+
+                        <div id="constraints-container" class="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+                            <!-- 由 JS 動態渲染 -->
+                        </div>
+                    </section>
+                </div>
+
+                <!-- 右欄：即時數學模型預覽與求解按鈕 (5 cols) -->
+                <div class="lg:col-span-5 space-y-6">
+                    <div id="formula-section" class="glass-card rounded-2xl p-5 sticky top-20 space-y-5 border-cyan-500/30">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-square-root-variable text-cyan-400"></i>
+                                <h2 class="text-base font-semibold text-white">標準數學模型即時預覽</h2>
+                            </div>
+                            <button onclick="copyMathModel()" class="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center gap-1.5">
+                                <i class="fa-regular fa-copy"></i> 複製模型
+                            </button>
+                        </div>
+
+                        <!-- 數學式呈現區塊 -->
+                        <div id="live-math-display" class="bg-slate-950 rounded-xl p-4 border border-slate-800/90 font-mono text-sm space-y-3 overflow-x-auto leading-relaxed">
+                            <!-- 由 JS 即時渲染 -->
+                        </div>
+
+                        <!-- 求解主按鈕 -->
+                        <button type="button" onclick="solveCurrentLP()" class="w-full py-3.5 px-6 rounded-xl font-bold text-base text-white bg-gradient-to-r from-cyan-500 via-sky-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 shadow-lg shadow-cyan-500/25 transition-all transform active:scale-[0.99] flex items-center justify-center gap-2.5">
+                            <i class="fa-solid fa-bolt"></i>
+                            <span>立即求解最佳方案 (Solve LP)</span>
+                        </button>
+
+                        <!-- 演算法資訊小卡 -->
+                        <div class="bg-slate-900/90 rounded-xl p-3.5 border border-slate-800/80 text-xs text-slate-400 space-y-1.5">
+                            <div class="flex items-center gap-2 text-slate-300 font-medium">
+                                <i class="fa-solid fa-microchip text-indigo-400"></i>
+                                <span>內建求解器引擎規格</span>
+                            </div>
+                            <p>• 演算法：Two-Phase Simplex Method (兩階段單形法) + 對偶影子價格解析 + Branch & Bound (整數/0-1分支界限法)</p>
+                            <p>• 支援狀態偵測：唯一最佳解、多重最佳解、無可行解 (Infeasible)、無界解 (Unbounded)</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==========================================
+                 求解結果與決策分析區 (Results & Sensitivity)
+                 ========================================== -->
+            <div id="results-section" class="space-y-6 pt-4 border-t border-slate-800/80">
+
+                <!-- 結果狀態標題列 -->
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center">
+                            <i class="fa-solid fa-chart-pie"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold text-white">求解結果與管理決策分析報告</h2>
+                            <p class="text-xs text-slate-400">Optimal Solution, Constraint Status, Sensitivity Analysis & Graphical Plot</p>
+                        </div>
+                    </div>
+                    <div id="solution-status-badge">
+                        <!-- 動態狀態標籤 -->
+                    </div>
+                </div>
+
+                <!-- 異常狀態警告框 (無可行解 / 無界解時顯示) -->
+                <div id="solution-error-box" class="hidden rounded-2xl p-6 border"></div>
+
+                <!-- 正常最佳解內容區 -->
+                <div id="solution-content-wrapper" class="space-y-6">
+
+                    <!-- 頂部關鍵指標卡片：最佳目標值 Z* 與各決策變數最佳解 -->
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        <!-- Z* 卡片 -->
+                        <div class="lg:col-span-4 glass-card rounded-2xl p-6 border-cyan-500/40 glow-cyan flex flex-col justify-between relative overflow-hidden">
+                            <div class="absolute -right-6 -bottom-6 opacity-10 pointer-events-none">
+                                <i class="fa-solid fa-trophy text-9xl text-cyan-400"></i>
+                            </div>
+                            <div>
+                                <span id="res-obj-type-label" class="px-2.5 py-1 rounded-md text-xs font-semibold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                                    最佳目標函數值 (Optimal Z*)
+                                </span>
+                                <div class="mt-4 flex items-baseline gap-2">
+                                    <span class="text-sm font-mono text-slate-400">Z* =</span>
+                                    <span id="res-z-value" class="text-4xl sm:text-5xl font-extrabold font-mono text-white tracking-tight">250</span>
+                                </div>
+                                <p id="res-z-unit" class="mt-1 text-xs text-cyan-300 font-medium">單位：元 (利潤)</p>
+                            </div>
+                            <div class="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+                                <span id="res-iter-info">單形法迭代：2 次</span>
+                                <span class="text-emerald-400 flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> 已達全域最佳解</span>
+                            </div>
+                        </div>
+
+                        <!-- 決策變數最佳值列表 (x1*, x2*, ...) -->
+                        <div class="lg:col-span-8 glass-card rounded-2xl p-6 flex flex-col justify-between">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                                    <i class="fa-solid fa-cubes text-indigo-400"></i>
+                                    <span>最佳決策變數組合 (<span class="font-mono">x₁*, x₂*, ..., xₙ*</span>)</span>
+                                </h3>
+                                <span class="text-xs text-slate-400">點擊卡片可檢視變數貢獻度</span>
+                            </div>
+                            <div id="res-vars-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                                <!-- 由 JS 動態產生 -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 功能需求 8：求解結果解讀 (管理意涵轉換) -->
+                    <div class="glass-card rounded-2xl p-6 border-l-4 border-l-indigo-500">
+                        <div class="flex items-center gap-2.5 mb-3">
+                            <i class="fa-solid fa-lightbulb text-amber-400 text-lg"></i>
+                            <h3 class="text-base font-bold text-white">求解結果管理意涵解讀 (Executive Management Interpretation)</h3>
+                        </div>
+                        <div id="res-management-summary" class="text-sm text-slate-200 space-y-2 leading-relaxed bg-slate-950/60 p-4 rounded-xl border border-slate-800/80">
+                            <!-- 由 JS 動態產生管理意涵文字 -->
+                        </div>
+                    </div>
+
+                    <!-- 功能需求 9 & 10：限制式分析與敏感度分析表格 -->
+                    <div class="glass-card rounded-2xl p-6 space-y-5">
+                        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                            <div>
+                                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                                    <i class="fa-solid fa-scale-balanced text-cyan-400"></i>
+                                    <span>限制式狀態與敏感度分析 (Constraint & Sensitivity Analysis)</span>
+                                </h3>
+                                <p class="text-xs text-slate-400 mt-0.5">包含左側使用量 (LHS)、鬆弛/剩餘量 (Slack/Surplus)、緊束狀態 (Binding) 與影子價格 (Shadow Price)</p>
+                            </div>
+                            <div class="flex items-center gap-2 text-xs">
+                                <span class="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-medium">
+                                    Binding：等號成立之瓶頸資源
+                                </span>
+                                <span class="px-2.5 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700 font-medium">
+                                    Nonbinding：尚有餘裕之非緊束限制
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto rounded-xl border border-slate-800">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-900/95 text-slate-300 text-xs uppercase border-b border-slate-800">
+                                        <th class="py-3.5 px-4 font-semibold">限制式名稱 / 數學式</th>
+                                        <th class="py-3.5 px-4 font-semibold text-right">左側值 (LHS)</th>
+                                        <th class="py-3.5 px-4 font-semibold text-center">符號</th>
+                                        <th class="py-3.5 px-4 font-semibold text-right">右側常數 (RHS)</th>
+                                        <th class="py-3.5 px-4 font-semibold text-right">Slack / Surplus</th>
+                                        <th class="py-3.5 px-4 font-semibold text-right">Shadow Price (影子價格)</th>
+                                        <th class="py-3.5 px-4 font-semibold text-center">狀態 (Status)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="res-constraints-tbody" class="divide-y divide-slate-800/70 text-sm font-mono">
+                                    <!-- 由 JS 動態產生 -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- 敏感度分析管理意涵自動解讀 -->
+                        <div class="bg-slate-950/80 rounded-xl p-4 border border-slate-800/90 space-y-2">
+                            <div class="text-xs font-semibold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                                <i class="fa-solid fa-magnifying-glass-chart"></i>
+                                <span>影子價格與瓶頸資源管理洞察 (Sensitivity Insights)</span>
+                            </div>
+                            <ul id="res-sensitivity-notes" class="text-xs sm:text-sm text-slate-300 space-y-1.5 list-disc list-inside">
+                                <!-- 由 JS 動態產生 -->
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- 功能需求 11(a)：教學輔助 2D 圖形化分析 (當決策變數數量為 2 時自動繪製) -->
+                    <div id="graphical-analysis-card" class="glass-card rounded-2xl p-6 space-y-5">
+                        <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-3">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                                        <i class="fa-solid fa-bezier-curve text-indigo-400"></i>
+                                        <span>2D 幾何圖形化分析 (Graphical Method & Feasible Region)</span>
+                                    </h3>
+                                    <span class="px-2 py-0.5 rounded text-[11px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-medium">
+                                        雙變數專屬視覺化
+                                    </span>
+                                </div>
+                                <p class="text-xs text-slate-400 mt-0.5">自動繪製限制式邊界線、可行解區域 (Feasible Region)、端點座標、等利潤/等成本線與最佳解位置</p>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                                    <input type="checkbox" id="toggle-isoline" checked onchange="draw2DGraph()" class="rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-0">
+                                    <span>顯示等目標值線 (Iso-Z Line)</span>
+                                </label>
+                                <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                                    <input type="checkbox" id="toggle-vertices" checked onchange="draw2DGraph()" class="rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-0">
+                                    <span>標示所有可行端點 (Corner Points)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                            <!-- Canvas 畫布區 -->
+                            <div class="lg:col-span-8 bg-slate-950 rounded-2xl p-3 border border-slate-800 relative">
+                                <div class="w-full aspect-[16/11] relative">
+                                    <canvas id="lp-graph-canvas" class="w-full h-full rounded-xl cursor-crosshair"></canvas>
+                                </div>
+                                <div class="mt-2 flex flex-wrap items-center justify-between text-[11px] text-slate-400 px-2">
+                                    <div class="flex items-center gap-4">
+                                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-cyan-500/30 border border-cyan-400 inline-block"></span> 可行區域 (Feasible Region)</span>
+                                        <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 bg-amber-400 inline-block"></span> 等利潤/成本線 (Z*)</span>
+                                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span> 最佳解頂點 (Optimal)</span>
+                                    </div>
+                                    <span id="canvas-hover-coords" class="font-mono text-slate-300">滑鼠游標：(x₁: --, x₂: --)</span>
+                                </div>
+                            </div>
+
+                            <!-- 可行端點 (Corner Points) 評估表 -->
+                            <div class="lg:col-span-4 space-y-3">
+                                <div class="text-xs font-semibold text-slate-300 flex items-center justify-between">
+                                    <span>可行區域極點 (Extreme Points) 檢驗表</span>
+                                    <span class="text-slate-500 font-mono">線性規劃基本定理</span>
+                                </div>
+                                <div class="overflow-hidden rounded-xl border border-slate-800 bg-slate-950/70">
+                                    <table class="w-full text-left border-collapse text-xs font-mono">
+                                        <thead>
+                                            <tr class="bg-slate-900 text-slate-400 border-b border-slate-800">
+                                                <th class="py-2.5 px-3">端點</th>
+                                                <th class="py-2.5 px-3">座標 (x₁, x₂)</th>
+                                                <th class="py-2.5 px-3 text-right">目標值 Z</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="corner-points-tbody" class="divide-y divide-slate-800/60">
+                                            <!-- 由 JS 動態填入 -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <p class="text-[11px] text-slate-400 leading-relaxed bg-slate-900/60 p-3 rounded-xl border border-slate-800/60">
+                                    <strong class="text-cyan-300">幾何意義說明：</strong>線性規劃之可行域為凸多邊形（Convex Polygon）。根據極點定理，若存在有限最佳解，必發生在可行區域的某個邊界端點（Corner Point）上。
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             TAB 2: 運輸問題範本 (Transportation Problem 8-Step Workflow)
+             ========================================== -->
+        <div id="view-transport" class="hidden space-y-6">
+
+            <!-- 頂部流程導引橫幅 (Step 1 ~ Step 8) -->
+            <div class="glass-card rounded-2xl p-5 border-indigo-500/30">
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+                    <div>
+                        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                            進階功能：管理科學模型範本 (Management Science Template)
+                        </span>
+                        <h2 class="text-xl font-bold text-white mt-1">運輸問題自動建模與最佳化系統 (Transportation Problem)</h2>
+                        <p class="text-xs text-slate-400">完整支援作業規範 Step 1 至 Step 8：問題規模設定 → 成本與供需矩陣輸入 → 自動轉換 LP 數學模式 → 求解與供需餘裕分析</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="loadTransportPreset('pdf_example')" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-book-open"></i> 載入作業 PDF 範例 (3供給 × 4需求)
+                        </button>
+                        <button onclick="loadTransportPreset('unbalanced')" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+                            載入供過於求案例
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 8 步驟進度指示條 -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 text-center">
+                    <div class="p-2 rounded-xl bg-slate-900/90 border border-indigo-500/40 text-xs">
+                        <div class="font-mono text-[10px] text-indigo-400 font-bold">STEP 1-2</div>
+                        <div class="font-medium text-slate-200 mt-0.5">設定供需規模</div>
+                    </div>
+                    <div class="p-2 rounded-xl bg-slate-900/90 border border-indigo-500/40 text-xs">
+                        <div class="font-mono text-[10px] text-indigo-400 font-bold">STEP 3</div>
+                        <div class="font-medium text-slate-200 mt-0.5">輸入成本與供需</div>
+                    </div>
+                    <div class="p-2 rounded-xl bg-slate-900/90 border border-indigo-500/40 text-xs">
+                        <div class="font-mono text-[10px] text-indigo-400 font-bold">STEP 4</div>
+                        <div class="font-medium text-slate-200 mt-0.5">自動建立 LP</div>
+                    </div>
+                    <div class="p-2 rounded-xl bg-slate-900/90 border border-indigo-500/40 text-xs">
+                        <div class="font-mono text-[10px] text-indigo-400 font-bold">STEP 5</div>
+                        <div class="font-medium text-slate-200 mt-0.5">顯示數學模式</div>
+                    </div>
+                    <div class="p-2 rounded-xl bg-slate-900/90 border border-cyan-500/40 text-xs">
+                        <div class="font-mono text-[10px] text-cyan-400 font-bold">STEP 6</div>
+                        <div class="font-medium text-slate-200 mt-0.5">呼叫引擎求解</div>
+                    </div>
+                    <div class="p-2 rounded-xl bg-slate-900/90 border border-cyan-500/40 text-xs">
+                        <div class="font-mono text-[10px] text-cyan-400 font-bold">STEP 7</div>
+                        <div class="font-medium text-slate-200 mt-0.5">最佳運輸表格</div>
+                    </div>
+                    <div class="p-2 rounded-xl bg-slate-900/90 border border-emerald-500/40 text-xs sm:col-span-2">
+                        <div class="font-mono text-[10px] text-emerald-400 font-bold">STEP 8</div>
+                        <div class="font-medium text-slate-200 mt-0.5">剩餘供應量、緊束限制與影子價格分析</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2 & Step 3: 規模設定與矩陣輸入 -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- 左側：規模與矩陣輸入 (7 cols) -->
+                <div class="lg:col-span-7 glass-card rounded-2xl p-6 space-y-5">
+                    <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 font-mono text-xs font-bold flex items-center justify-center border border-indigo-500/30">S2</span>
+                            <h3 class="text-base font-bold text-white">建立問題規模與輸入運輸成本矩陣</h3>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="flex items-center gap-1.5 text-xs">
+                                <span class="text-slate-400">供給地數量 (Sources):</span>
+                                <select id="tp-sources-select" onchange="resizeTransportMatrix()" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-cyan-400 font-mono font-bold">
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3" selected>3</option>
+                                    <option value="4">4</option>
+                                    <option value="5">5</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center gap-1.5 text-xs">
+                                <span class="text-slate-400">需求地數量 (Destinations):</span>
+                                <select id="tp-dests-select" onchange="resizeTransportMatrix()" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-cyan-400 font-mono font-bold">
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3">3</option>
+                                    <option value="4" selected>4</option>
+                                    <option value="5">5</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 總供給與總需求平衡狀態提示 -->
+                    <div id="tp-balance-banner" class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <!-- 由 JS 動態更新 -->
+                    </div>
+
+                    <!-- Step 3: 運輸成本矩陣 + 供應量 + 需求量 整合編輯表 -->
+                    <div class="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/60 p-2">
+                        <table class="w-full border-collapse text-xs sm:text-sm" id="tp-input-table">
+                            <!-- 由 JS 動態產生 -->
+                        </table>
+                    </div>
+
+                    <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+                        <button type="button" onclick="buildAndSolveTransport(false)" class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-2">
+                            <i class="fa-solid fa-code"></i> Step 4 & 5：僅建立並檢視數學模型
+                        </button>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="syncTransportToGeneralLP()" class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 transition flex items-center gap-2">
+                                <i class="fa-solid fa-arrow-up-right-from-square"></i> 同步至一般 LP 編輯器
+                            </button>
+                            <button type="button" onclick="buildAndSolveTransport(true)" class="px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-400 hover:to-cyan-400 text-white shadow-lg shadow-indigo-500/25 transition flex items-center gap-2">
+                                <i class="fa-solid fa-play"></i> Step 6：建立模型並立即求解 (Solve)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右側：Step 4 & Step 5 自動產生之完整 LP 數學模型 (5 cols) -->
+                <div class="lg:col-span-5 glass-card rounded-2xl p-6 space-y-4 flex flex-col">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 font-mono text-xs font-bold flex items-center justify-center border border-indigo-500/30">S5</span>
+                            <h3 class="text-base font-bold text-white">自動建立之線性規劃數學模型</h3>
+                        </div>
+                        <span id="tp-var-count-tag" class="text-xs font-mono text-cyan-400">12 決策變數 / 7 限制式</span>
+                    </div>
+                    <div class="text-xs text-slate-400">
+                        定義決策變數 <span class="font-mono text-slate-200">xᵢⱼ</span> 為由供給地 <span class="font-mono text-slate-200">Sᵢ</span> 運往需求地 <span class="font-mono text-slate-200">Dⱼ</span> 之運輸數量：
+                    </div>
+                    <div id="tp-math-model-box" class="flex-1 bg-slate-950 rounded-xl p-4 border border-slate-800 font-mono text-xs sm:text-sm space-y-3 overflow-y-auto max-h-[380px] leading-relaxed">
+                        <!-- 由 JS 自動產生 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 7 & Step 8: 運輸問題求解結果呈現與分析 -->
+            <div id="tp-results-section" class="glass-card rounded-2xl p-6 space-y-6 border-cyan-500/30">
+                <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 flex items-center justify-center font-mono font-bold">
+                            S7
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-white">Step 7 & Step 8：最佳運輸方案與資源敏感度分析</h3>
+                            <p class="text-xs text-slate-400">Optimal Transportation Schedule, Remaining Supply, Demand Satisfaction & Shadow Prices</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 bg-slate-950 px-4 py-2.5 rounded-xl border border-cyan-500/40">
+                        <span class="text-xs text-slate-400">最小總運輸成本 (Min Z*)：</span>
+                        <span id="tp-res-total-cost" class="text-2xl font-extrabold font-mono text-cyan-400">$10,750</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <!-- Step 7(a): 最佳運輸方案清單表格 (來源地 | 目的地 | 最佳運輸量) -->
+                    <div class="lg:col-span-5 space-y-3">
+                        <h4 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                            <i class="fa-solid fa-route text-cyan-400"></i>
+                            <span>最佳運輸路線明細表 (Active Routes)</span>
+                        </h4>
+                        <div class="overflow-hidden rounded-xl border border-slate-800 bg-slate-950/70">
+                            <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                                <thead>
+                                    <tr class="bg-slate-900 text-slate-300 border-b border-slate-800">
+                                        <th class="py-2.5 px-3">來源地</th>
+                                        <th class="py-2.5 px-3">目的地</th>
+                                        <th class="py-2.5 px-3 text-right">單位成本</th>
+                                        <th class="py-2.5 px-3 text-right">最佳運輸量 (xᵢⱼ*)</th>
+                                        <th class="py-2.5 px-3 text-right">路線成本</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tp-res-routes-tbody" class="divide-y divide-slate-800/70 font-mono">
+                                    <!-- 由 JS 動態填入 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Step 7(b): 最佳調度矩陣視圖 -->
+                    <div class="lg:col-span-7 space-y-3">
+                        <h4 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                            <i class="fa-solid fa-table-cells text-indigo-400"></i>
+                            <span>最佳運輸量配置矩陣 (Allocation Matrix)</span>
+                        </h4>
+                        <div id="tp-res-matrix-container" class="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/70 p-3">
+                            <!-- 由 JS 動態填入 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 8: 結果分析 (各供給地剩餘供應量、各需求地滿足狀態、Binding Constraints、Shadow Price) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                    <!-- 供給地分析 -->
+                    <div class="bg-slate-950/80 rounded-xl p-4 border border-slate-800 space-y-3">
+                        <h4 class="text-sm font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-warehouse text-emerald-400"></i>
+                            <span>各供給地供應狀態與剩餘量分析 (Supply Analysis)</span>
+                        </h4>
+                        <div id="tp-supply-analysis-list" class="space-y-2 text-xs sm:text-sm">
+                            <!-- 由 JS 動態填入 -->
+                        </div>
+                    </div>
+
+                    <!-- 需求地分析 -->
+                    <div class="bg-slate-950/80 rounded-xl p-4 border border-slate-800 space-y-3">
+                        <h4 class="text-sm font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-shop text-amber-400"></i>
+                            <span>各需求地滿足狀態與影子價格 (Demand & Shadow Price)</span>
+                        </h4>
+                        <div id="tp-demand-analysis-list" class="space-y-2 text-xs sm:text-sm">
+                            <!-- 由 JS 動態填入 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             TAB 3: 更多管理科學範本與 AI 自然語言協助建模
+             ========================================== -->
+        <div id="view-templates" class="hidden space-y-6">
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                <!-- 進階功能 2：AI 自然語言協助建模 (6 cols) -->
+                <div class="lg:col-span-6 glass-card rounded-2xl p-6 space-y-5 border-cyan-500/30">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-indigo-600 flex items-center justify-center text-white">
+                                <i class="fa-solid fa-robot"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-base font-bold text-white">AI 智慧語意解析輔助建模</h2>
+                                <p class="text-xs text-slate-400">輸入自然語言管理問題描述，自動萃取決策變數、目標函數與限制式</p>
+                            </div>
+                        </div>
+                        <span class="px-2.5 py-0.5 rounded-full text-[11px] bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+                            進階功能 2
+                        </span>
+                    </div>
+
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-slate-300 font-medium">請輸入管理數學文字應用題或決策情境：</span>
+                            <div class="flex gap-1.5">
+                                <button onclick="fillAIPromptSample(1)" class="text-cyan-400 hover:underline">範例情境1(生產)</button>
+                                <span class="text-slate-600">|</span>
+                                <button onclick="fillAIPromptSample(2)" class="text-cyan-400 hover:underline">範例情境2(採購)</button>
+                            </div>
+                        </div>
+                        <textarea id="ai-nlp-input" rows="5" placeholder="例如：某工廠生產產品A與產品B。產品A每單位利潤20元，產品B每單位利潤15元。原料限制為 2*產品A + 1*產品B <= 20，工時限制為 1*產品A + 3*產品B <= 35，求最大利潤。"
+                            class="w-full rounded-xl bg-slate-950 border border-slate-800 p-3.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500 leading-relaxed"></textarea>
+                    </div>
+
+                    <button onclick="parseNaturalLanguageToLP()" class="w-full py-3 rounded-xl font-semibold text-sm bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white shadow-lg transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        <span>AI 自動解析文字並建立線性規劃模型</span>
+                    </button>
+
+                    <div id="ai-parse-feedback" class="hidden bg-slate-950 rounded-xl p-4 border border-slate-800 text-xs space-y-2"></div>
+                </div>
+
+                <!-- 進階功能 1：其他經典管理科學模型範本庫 (6 cols) -->
+                <div class="lg:col-span-6 glass-card rounded-2xl p-6 space-y-5">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400">
+                                <i class="fa-solid fa-layer-group"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-base font-bold text-white">管理科學經典模型範本庫 (Templates)</h2>
+                                <p class="text-xs text-slate-400">點擊任一管理科學範本，系統將自動載入資料、建立數學模型並完成求解</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        <!-- 範本 1：運輸問題 -->
+                        <div onclick="switchMainTab('transport')" class="p-4 rounded-xl bg-slate-900/90 hover:bg-slate-800/90 border border-slate-800 hover:border-indigo-500/50 cursor-pointer transition group">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+                                    <i class="fa-solid fa-truck-fast"></i>
+                                </span>
+                                <span class="text-[11px] font-mono text-indigo-400 group-hover:translate-x-1 transition-transform">進入專屬模組 →</span>
+                            </div>
+                            <h3 class="text-sm font-bold text-white">1. 運輸問題 (Transportation)</h3>
+                            <p class="text-xs text-slate-400 mt-1">多供給地至多需求地之最低成本物流調度問題（含完整8步驟互動介面）。</p>
+                        </div>
+
+                        <!-- 範本 2：指派問題 -->
+                        <div onclick="loadTemplateModel('assignment')" class="p-4 rounded-xl bg-slate-900/90 hover:bg-slate-800/90 border border-slate-800 hover:border-cyan-500/50 cursor-pointer transition group">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
+                                    <i class="fa-solid fa-user-check"></i>
+                                </span>
+                                <span class="text-[11px] font-mono text-cyan-400 group-hover:translate-x-1 transition-transform">載入並求解 →</span>
+                            </div>
+                            <h3 class="text-sm font-bold text-white">2. 指派問題 (Assignment 0-1)</h3>
+                            <p class="text-xs text-slate-400 mt-1">3名人員指派3項專案任務之 0-1 整數規劃模型，最小化總執行時間。</p>
+                        </div>
+
+                        <!-- 範本 3：混合問題 -->
+                        <div onclick="loadTemplateModel('blending')" class="p-4 rounded-xl bg-slate-900/90 hover:bg-slate-800/90 border border-slate-800 hover:border-emerald-500/50 cursor-pointer transition group">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                                    <i class="fa-solid fa-flask"></i>
+                                </span>
+                                <span class="text-[11px] font-mono text-emerald-400 group-hover:translate-x-1 transition-transform">載入並求解 →</span>
+                            </div>
+                            <h3 class="text-sm font-bold text-white">3. 混合配料問題 (Diet / Blending)</h3>
+                            <p class="text-xs text-slate-400 mt-1">在滿足蛋白質、維生素與熱量最低營養需求下，求飼料配方最小成本。</p>
+                        </div>
+
+                        <!-- 範本 4：多期生產與存貨計劃 -->
+                        <div onclick="loadTemplateModel('production')" class="p-4 rounded-xl bg-slate-900/90 hover:bg-slate-800/90 border border-slate-800 hover:border-amber-500/50 cursor-pointer transition group">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                                    <i class="fa-solid fa-industry"></i>
+                                </span>
+                                <span class="text-[11px] font-mono text-amber-400 group-hover:translate-x-1 transition-transform">載入並求解 →</span>
+                            </div>
+                            <h3 class="text-sm font-bold text-white">4. 生產計劃與資源配置</h3>
+                            <p class="text-xs text-slate-400 mt-1">結合機台工時、原料配額與市場最低合約需求之綜合生產組合最佳化。</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+        </div>
+    </div>
+
+    <!-- 頁尾資訊 -->
+    <footer class="border-t border-slate-900 bg-slate-950/90 py-4 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-500">
+            <div>
+                網頁版線性規劃計算器 (Web-based Linear Programming Calculator) • 純前端兩階段單形法與敏感度分析系統
+            </div>
+            <div class="flex items-center gap-4">
+                <span>支援：<code class="text-slate-400">Max / Min</code></span>
+                <span>•</span>
+                <span><code class="text-slate-400">≤, =, ≥</code></span>
+                <span>•</span>
+                <span><code class="text-slate-400">Shadow Price & Slack</code></span>
+                <span>•</span>
+                <span><code class="text-slate-400">2D Feasible Region</code></span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- =========================================================================
+         前端核心邏輯與線性規劃求解引擎 (Pure Frontend JS Engine)
+         ========================================================================= -->
+
+</body>
+</html>
